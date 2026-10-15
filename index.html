@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BANKBEES 100% REAL LIVE ENGINE</title>
+<style>
+body{background:#020617;color:#fff;font-family:Arial,sans-serif;text-align:center;padding:10px}
+.box{background:#1e293b;padding:14px;border-radius:14px;margin:10px 0}
+.buy{background:#22c55e;color:#000;padding:14px;border-radius:12px;font-weight:bold;font-size:20px}
+.sell{background:#ef4444;color:#fff;padding:14px;border-radius:12px;font-weight:bold;font-size:20px}
+.wait{background:#334155;padding:10px;border-radius:10px;margin:5px 0;font-size:12px;text-align:left}
+button{background:#2563eb;color:#fff;border:none;padding:14px;width:100%;border-radius:10px;font-weight:bold;font-size:16px;cursor:pointer}
+small{color:#94a3b8}
+</style>
+</head><body>
+<h2>🦁 BANKBEES LEADING PRO ENGINE</h2><small>100% Real-Time Live Server</small>
+<div class="box" id="main">Ready. Click Refresh for Live Market Data.</div>
+<button onclick="fetchRealLive()">🔄 REFRESH LIVE MARKET</button>
+
+<script>
+async function getYahooLive(sym) {
+  const proxy = "https://corsproxy.io/?";
+  const target = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1m&range=1d`;
+  
+  try {
+    let res = await fetch(proxy + encodeURIComponent(target));
+    if(!res.ok) return null;
+    let data = await res.json();
+    let m = data.chart.result[0].meta;
+    return {
+      price: m.regularMarketPrice,
+      prev: m.chartPreviousClose,
+      high: m.regularMarketHigh || m.regularMarketPrice
+    };
+  } catch(e) {
+    return null;
+  }
+}
+
+async function fetchRealLive() {
+  let out = document.getElementById('main');
+  out.innerHTML = '<div class=wait>⏱️ Fetching Real-Time Market Data (2s)...</div>';
+
+  let [bb, bn, sp, nq, ivix, uvix, dxy, tnx, ftse, dax, hdb, crude, cur] = await Promise.all([
+    getYahooLive('BANKBEES.NS'),
+    getYahooLive('^NSEBANK'),
+    getYahooLive('ES=F'),
+    getYahooLive('NQ=F'),
+    getYahooLive('^INDIAVIX'),
+    getYahooLive('^VIX'),
+    getYahooLive('DX-Y.NYB'),
+    getYahooLive('^TNX'),
+    getYahooLive('^FTSE'),
+    getYahooLive('^GDAXI'),
+    getYahooLive('HDB'),
+    getYahooLive('CL=F'),
+    fetch('https://open.er-api.com/v6/latest/USD').then(r=>r.json()).catch(()=>null)
+  ]);
+
+  let inr = (cur && cur.rates && cur.rates.INR) ? cur.rates.INR : 83.5;
+
+  if(!bb || !bb.price) {
+    out.innerHTML = '<div class=wait style="color:#ef4444;text-align:center">⚠️ Market Data Feed Busy / Market Closed.<br>Tap REFRESH again in 2 seconds.</div>';
+    return;
+  }
+
+  let price = bb.price;
+  let high = bb.high;
+  let dip = ((high - price) / high) * 100;
+  if(isNaN(dip) || dip < 0) dip = 0.0;
+
+  let score = 0;
+  let logs = [];
+
+  function check(cond, trueTxt, falseTxt) {
+    if (cond) { score++; logs.push('✅ ' + trueTxt); }
+    else { logs.push('❌ ' + falseTxt); }
+  }
+
+  check(dip >= 0.5 && dip <= 2.2, `BankBees Dip ${dip.toFixed(2)}% in Zone`, `BankBees Dip ${dip.toFixed(2)}% Out of Zone`);
+  check(bn && bn.price > bn.prev, `BankNifty UP (${bn?.price?.toFixed(1)})`, `BankNifty DOWN (${bn?.price?.toFixed(1)})`);
+  check(sp && sp.price > sp.prev, `S&P Futures UP (${sp?.price?.toFixed(1)})`, `S&P Futures DOWN (${sp?.price?.toFixed(1)})`);
+  check(nq && nq.price > nq.prev, `Nasdaq Futures UP (${nq?.price?.toFixed(1)})`, `Nasdaq Futures DOWN (${nq?.price?.toFixed(1)})`);
+  check(ivix && ivix.price < ivix.prev, `India VIX Cooling (${ivix?.price?.toFixed(2)})`, `India VIX Spiking (${ivix?.price?.toFixed(2)})`);
+  check(uvix && uvix.price < uvix.prev, `US VIX Cooling (${uvix?.price?.toFixed(2)})`, `US VIX High (${uvix?.price?.toFixed(2)})`);
+  check(dxy && dxy.price <= dxy.prev, `Dollar Index Controlled (${dxy?.price?.toFixed(2)})`, `Dollar Index High (${dxy?.price?.toFixed(2)})`);
+  check(tnx && tnx.price <= tnx.prev, `US 10Y Yield Safe (${tnx?.price?.toFixed(2)})`, `US 10Y Yield High (${tnx?.price?.toFixed(2)})`);
+  check(ftse && ftse.price > ftse.prev, `FTSE Positive (${ftse?.price?.toFixed(1)})`, `FTSE Negative (${ftse?.price?.toFixed(1)})`);
+  check(dax && dax.price > dax.prev, `DAX Positive (${dax?.price?.toFixed(1)})`, `DAX Negative (${dax?.price?.toFixed(1)})`);
+  check(hdb && hdb.price > hdb.prev, `HDFC ADR UP ($${hdb?.price?.toFixed(2)})`, `HDFC ADR DOWN ($${hdb?.price?.toFixed(2)})`);
+  check(inr <= 89.0, `USDINR Currency Stable (${inr.toFixed(2)})`, `USDINR Currency Weak (${inr.toFixed(2)})`);
+  check(crude && crude.price <= crude.prev * 1.015, `Crude Oil Range-bound ($${crude?.price?.toFixed(1)})`, `Crude Oil High ($${crude?.price?.toFixed(1)})`);
+  check(sp && nq && sp.price > sp.prev && nq.price > nq.prev, `Global Risk-On Active`, `Global Risk-Off Warning`);
+
+  let totalFactors = 14;
+  let pct = ((score / totalFactors) * 100).toFixed(0);
+  
+  let sig = score >= 10 
+    ? `<div class=buy>📈 KAL 0.5%+ UP<br>STRONG BUY BTST @3:20<br>Score ${score}/${totalFactors} (${pct}%)</div>` 
+    : score <= 6 
+    ? `<div class=sell>📉 KAL 0.5%+ DOWN<br>STRONG SELL / AVOID<br>Score ${score}/${totalFactors} (${pct}%)</div>` 
+    : `<div class=wait style="text-align:center;font-size:16px">↔️ SIDEWAYS MARKET<br>NO CLEAR BTST TRADE<br>Score ${score}/${totalFactors} (${pct}%)</div>`;
+
+  out.innerHTML = `<h3>BANKBEES ${price.toFixed(2)} | Dip ${dip.toFixed(2)}%</h3>${sig}<div class=wait>${logs.join('<br>')}</div>`;
+}
+
+fetchRealLive();
+</script>
+</body></html>
